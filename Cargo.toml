@@ -1,0 +1,14 @@
+[package]
+name = "sitemap-writer"
+version = "0.1.0"
+edition = "2021"
+authors = ["uiuifree"]
+description = "Simple Sitemap Writer"
+license = "MIT"
+keywords=["sitemap","writer"]
+
+readme="README.md"
+repository = "https://github.com/uiuifree/rust-sitemap-writer"
+
+[dependencies]
+html-escape="0.2.11"
