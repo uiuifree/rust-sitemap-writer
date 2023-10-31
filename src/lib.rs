@@ -17,7 +17,7 @@ impl SitemapWriter {
         if file.is_err() {
             return Err(SitemapError::FileOpen(file.err().unwrap().to_string()));
         }
-        let file = file.unwrap();
+        let mut file = file.unwrap();
         write_text(&file, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
         write_text(&file, r#"<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#)?;
 
@@ -38,7 +38,11 @@ impl SitemapWriter {
             write_text(&file, row.as_str())?;
         }
         write_text(&file, r#"</urlset> "#)?;
-        Ok(())
+        match file.flush(){
+            Ok(_) => Ok(()),
+            Err(e) =>SitemapError::Write(e.to_string())
+        }
+
     }
 }
 
