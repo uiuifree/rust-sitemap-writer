@@ -48,6 +48,33 @@ impl SitemapWriter {
             Err(e) => Err(SitemapError::Write(e.to_string())),
         }
     }
+    pub fn build(urls: Vec<SitemapUrl>) -> String {
+        let mut content = "".to_string();
+        content.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
+        content.push_str(r#"<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#);
+        for url in urls {
+            let mut row = "<url>".to_string();
+            row += format!("<loc>{}</loc>", html_escape::encode_text(url.loc.as_str())).as_str();
+            if url.lastmod.is_some() {
+                row += format!("<lastmod>{}</lastmod>", url.lastmod.unwrap_or_default()).as_str();
+            }
+            if url.changefreq.is_some() {
+                row += format!(
+                    "<changefreq>{}</changefreq>",
+                    url.changefreq.unwrap().to_string()
+                )
+                .as_str();
+            }
+            if url.priority.is_some() {
+                row += format!("<priority>{}</priority>", url.priority.unwrap()).as_str();
+            }
+            row += "</url>";
+            content.push_str(&row);
+        }
+
+        content.push_str(r#"</urlset> "#);
+        content
+    }
 }
 
 fn write_text(mut file: &File, str: &str) -> Result<(), SitemapError> {

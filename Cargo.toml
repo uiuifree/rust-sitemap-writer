@@ -11,4 +11,4 @@ readme="README.md"
 repository = "https://github.com/uiuifree/rust-sitemap-writer"
 
 [dependencies]
-html-escape="0.2.11"
+html-escape="0.2.13"
