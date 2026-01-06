@@ -3,12 +3,15 @@ name = "sitemap-writer"
 version = "1.0.0"
 edition = "2024"
 authors = ["uiuifree"]
-description = "Simple Sitemap Writer"
+description = "A simple and lightweight Rust library for generating XML sitemaps"
 license = "MIT"
-keywords=["sitemap","writer"]
+keywords = ["sitemap", "xml", "seo", "writer", "web"]
+categories = ["web-programming", "encoding", "parser-implementations"]
 
-readme="README.md"
+readme = "README.md"
 repository = "https://github.com/uiuifree/rust-sitemap-writer"
+documentation = "https://docs.rs/sitemap-writer"
+homepage = "https://github.com/uiuifree/rust-sitemap-writer"
 
 [dependencies]
 html-escape="0.2.13"
