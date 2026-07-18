@@ -1,30 +1,34 @@
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::extensions::{SitemapAlternate, SitemapImage, SitemapNews, SitemapVideo};
+
 /// Represents a single URL entry in a sitemap.
 ///
 /// # Examples
 ///
-/// ## Creating with all fields
+/// ## Creating with the builder API
 ///
 /// ```rust
 /// use sitemap_writer::{SitemapUrl, SitemapChangeFreq};
 ///
-/// let url = SitemapUrl {
-///     loc: "https://example.com/page".to_string(),
-///     lastmod: Some("2024-01-15".to_string()),
-///     changefreq: Some(SitemapChangeFreq::WEEKLY),
-///     priority: Some(0.8),
-/// };
+/// let url = SitemapUrl::new("https://example.com/page")
+///     .lastmod("2024-01-15")
+///     .changefreq(SitemapChangeFreq::WEEKLY)
+///     .priority(0.8);
 /// ```
 ///
-/// ## Creating with only the URL
+/// ## Creating with a struct literal
 ///
 /// ```rust
 /// use sitemap_writer::SitemapUrl;
 ///
-/// let url = SitemapUrl::new("https://example.com/page");
+/// let url = SitemapUrl {
+///     loc: "https://example.com/page".to_string(),
+///     lastmod: Some("2024-01-15".to_string()),
+///     ..Default::default()
+/// };
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SitemapUrl {
     /// The URL of the page. This is the only required field.
     ///
@@ -46,27 +50,24 @@ pub struct SitemapUrl {
     ///
     /// Valid values range from 0.0 to 1.0. The default priority of a page is 0.5.
     pub priority: Option<f32>,
-}
 
-impl Default for SitemapUrl {
-    fn default() -> Self {
-        SitemapUrl {
-            loc: "".to_string(),
-            lastmod: None,
-            changefreq: None,
-            priority: None,
-        }
-    }
+    /// Images on the page, for the Google image sitemap extension.
+    pub images: Vec<SitemapImage>,
+
+    /// Videos on the page, for the Google video sitemap extension.
+    pub videos: Vec<SitemapVideo>,
+
+    /// News article metadata, for the Google news sitemap extension.
+    pub news: Option<SitemapNews>,
+
+    /// Alternate language/region versions of the page (`hreflang`).
+    pub alternates: Vec<SitemapAlternate>,
 }
 
 impl SitemapUrl {
     /// Creates a new `SitemapUrl` with only the URL specified.
     ///
-    /// All other fields (`lastmod`, `changefreq`, `priority`) will be `None`.
-    ///
-    /// # Arguments
-    ///
-    /// * `loc` - The URL of the page.
+    /// All other fields are empty. Use the builder methods to set them.
     ///
     /// # Examples
     ///
@@ -77,11 +78,75 @@ impl SitemapUrl {
     /// assert_eq!(url.loc, "https://example.com/about");
     /// assert!(url.lastmod.is_none());
     /// ```
-    pub fn new(loc: &str) -> SitemapUrl {
+    pub fn new(loc: impl Into<String>) -> SitemapUrl {
         SitemapUrl {
-            loc: loc.to_string(),
+            loc: loc.into(),
             ..SitemapUrl::default()
         }
+    }
+
+    /// Sets the date of last modification, in W3C Datetime format.
+    pub fn lastmod(mut self, lastmod: impl Into<String>) -> SitemapUrl {
+        self.lastmod = Some(lastmod.into());
+        self
+    }
+
+    /// Sets how frequently the page is likely to change.
+    pub fn changefreq(mut self, changefreq: SitemapChangeFreq) -> SitemapUrl {
+        self.changefreq = Some(changefreq);
+        self
+    }
+
+    /// Sets the priority of this URL relative to other URLs (0.0 to 1.0).
+    pub fn priority(mut self, priority: f32) -> SitemapUrl {
+        self.priority = Some(priority);
+        self
+    }
+
+    /// Adds an image to this URL entry. Can be called multiple times.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use sitemap_writer::{SitemapUrl, SitemapImage};
+    ///
+    /// let url = SitemapUrl::new("https://example.com/")
+    ///     .image(SitemapImage::new("https://example.com/photo.jpg"));
+    /// assert_eq!(url.images.len(), 1);
+    /// ```
+    pub fn image(mut self, image: SitemapImage) -> SitemapUrl {
+        self.images.push(image);
+        self
+    }
+
+    /// Adds a video to this URL entry. Can be called multiple times.
+    pub fn video(mut self, video: SitemapVideo) -> SitemapUrl {
+        self.videos.push(video);
+        self
+    }
+
+    /// Sets the news article metadata for this URL entry.
+    pub fn news(mut self, news: SitemapNews) -> SitemapUrl {
+        self.news = Some(news);
+        self
+    }
+
+    /// Adds an alternate language/region link to this URL entry.
+    /// Can be called multiple times.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use sitemap_writer::{SitemapUrl, SitemapAlternate};
+    ///
+    /// let url = SitemapUrl::new("https://example.com/en/")
+    ///     .alternate(SitemapAlternate::new("en", "https://example.com/en/"))
+    ///     .alternate(SitemapAlternate::new("ja", "https://example.com/ja/"));
+    /// assert_eq!(url.alternates.len(), 2);
+    /// ```
+    pub fn alternate(mut self, alternate: SitemapAlternate) -> SitemapUrl {
+        self.alternates.push(alternate);
+        self
     }
 }
 

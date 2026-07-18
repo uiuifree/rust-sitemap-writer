@@ -7,6 +7,8 @@ pub enum SitemapError {
     FileOpen(String),
     /// Failed to write to the file.
     Write(String),
+    /// Failed to create the output directory.
+    CreateDir(String),
 }
 
 impl Display for SitemapError {
@@ -14,6 +16,7 @@ impl Display for SitemapError {
         match self {
             SitemapError::FileOpen(msg) => write!(f, "Failed to open file: {}", msg),
             SitemapError::Write(msg) => write!(f, "Failed to write: {}", msg),
+            SitemapError::CreateDir(msg) => write!(f, "Failed to create directory: {}", msg),
         }
     }
 }

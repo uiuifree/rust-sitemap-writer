@@ -1,0 +1,28 @@
+# sitemap-writer
+
+> sitemap-writer is a simple and lightweight Rust library (crate) for generating XML sitemaps. It supports the full sitemaps.org protocol (loc, lastmod, changefreq, priority, sitemap index), splitting at the 50,000-URL limit, optional gzip output, and the Google extensions for images, videos, news, and hreflang alternate links.
+
+Install with `cargo add sitemap-writer` (add `--features gzip` for `.xml.gz` output). MSRV 1.85, MIT license, one tiny required dependency (`html-escape`).
+
+Key APIs:
+
+- `SitemapWriter::make(path, urls)` writes `sitemap.xml`; `SitemapWriter::build(urls)` returns the XML as a `String` for serving dynamically from any web framework. `urls` is any `IntoIterator<Item = SitemapUrl>`.
+- `SitemapUrl::new(loc)` with builder methods `.lastmod()`, `.changefreq()`, `.priority()`, `.image()`, `.video()`, `.news()`, `.alternate()`.
+- `SitemapIndexWriter::make/build` writes a sitemap index referencing multiple sitemaps (`SitemapIndex::new(loc).lastmod(date)`).
+- `ChunkedSitemapWriter::new(base_url).make(dir, urls)` splits URLs into `sitemap1.xml`, `sitemap2.xml`, ... plus `sitemap_index.xml` (50,000 URLs per file by default; `chunk_size(n)` to override; `build()` returns the strings instead).
+- `make_gzip` variants on all three writers write gzip-compressed `.xml.gz` files (feature `gzip`).
+
+XML special characters are escaped automatically. Extension namespaces (`xmlns:image`, `xmlns:video`, `xmlns:news`, `xmlns:xhtml`) are declared only when used. Output is deterministic single-line XML. The library performs no validation of URLs, dates, or priorities by design.
+
+## Docs
+
+- [README](https://github.com/uiuifree/rust-sitemap-writer/blob/master/README.md): usage guide with examples for every feature, migration notes, and FAQ
+- [API documentation](https://docs.rs/sitemap-writer): full rustdoc with runnable examples on every public item
+- [crates.io](https://crates.io/crates/sitemap-writer): released versions
+
+## Examples
+
+- [Basic sitemap](https://github.com/uiuifree/rust-sitemap-writer/blob/master/examples/basic.rs): write sitemap.xml with lastmod, changefreq, and priority
+- [Google extensions](https://github.com/uiuifree/rust-sitemap-writer/blob/master/examples/google_extensions.rs): image, video, news, and hreflang alternate links
+- [Split large sitemaps](https://github.com/uiuifree/rust-sitemap-writer/blob/master/examples/split_large_sitemap.rs): 120,000 URLs into multiple files plus an index
+- [gzip output](https://github.com/uiuifree/rust-sitemap-writer/blob/master/examples/gzip.rs): write sitemap.xml.gz

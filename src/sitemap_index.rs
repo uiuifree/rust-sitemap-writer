@@ -1,7 +1,8 @@
-use std::fs::File;
-use std::io::Write;
+use std::fmt::Write as _;
+use std::path::Path;
 
 use crate::error::SitemapError;
+use crate::sitemap_writer::write_file;
 
 /// Represents a single sitemap entry in a sitemap index.
 ///
@@ -28,7 +29,7 @@ use crate::error::SitemapError;
 ///
 /// let sitemap = SitemapIndex::new("https://example.com/sitemap1.xml");
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SitemapIndex {
     /// The URL of the sitemap file. This is a required field.
     ///
@@ -39,15 +40,6 @@ pub struct SitemapIndex {
     ///
     /// Should be in W3C Datetime format (e.g., `2024-01-15` or `2024-01-15T12:00:00+00:00`).
     pub lastmod: Option<String>,
-}
-
-impl Default for SitemapIndex {
-    fn default() -> Self {
-        SitemapIndex {
-            loc: "".to_string(),
-            lastmod: None,
-        }
-    }
 }
 
 impl SitemapIndex {
@@ -68,11 +60,27 @@ impl SitemapIndex {
     /// assert_eq!(sitemap.loc, "https://example.com/sitemap1.xml");
     /// assert!(sitemap.lastmod.is_none());
     /// ```
-    pub fn new(loc: &str) -> SitemapIndex {
+    pub fn new(loc: impl Into<String>) -> SitemapIndex {
         SitemapIndex {
-            loc: loc.to_string(),
+            loc: loc.into(),
             ..SitemapIndex::default()
         }
+    }
+
+    /// Sets the date of last modification, in W3C Datetime format.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use sitemap_writer::SitemapIndex;
+    ///
+    /// let sitemap = SitemapIndex::new("https://example.com/sitemap1.xml")
+    ///     .lastmod("2024-01-15");
+    /// assert_eq!(sitemap.lastmod.as_deref(), Some("2024-01-15"));
+    /// ```
+    pub fn lastmod(mut self, lastmod: impl Into<String>) -> SitemapIndex {
+        self.lastmod = Some(lastmod.into());
+        self
     }
 }
 
@@ -116,12 +124,12 @@ impl SitemapIndexWriter {
     /// # Arguments
     ///
     /// * `path` - The file path where the sitemap index will be written.
-    /// * `sitemaps` - A vector of [`SitemapIndex`] to include in the index.
+    /// * `sitemaps` - The [`SitemapIndex`] entries to include in the index.
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Returns `Ok(())` on success, or a [`SitemapError`] if the file cannot
-    /// be created or written to.
+    /// Returns [`SitemapError::FileOpen`] if the file cannot be created, or
+    /// [`SitemapError::Write`] if writing fails.
     ///
     /// # Examples
     ///
@@ -137,36 +145,40 @@ impl SitemapIndexWriter {
     /// ]);
     /// assert!(result.is_ok());
     /// ```
-    pub fn make(path: &str, sitemaps: Vec<SitemapIndex>) -> Result<(), SitemapError> {
-        let file = File::create(path);
-        if file.is_err() {
-            return Err(SitemapError::FileOpen(file.err().unwrap().to_string()));
-        }
-        let mut file = file.unwrap();
-        write_text(&file, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
-        write_text(
-            &file,
-            r#"<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#,
-        )?;
+    pub fn make(
+        path: impl AsRef<Path>,
+        sitemaps: impl IntoIterator<Item = SitemapIndex>,
+    ) -> Result<(), SitemapError> {
+        write_file(path.as_ref(), &Self::build(sitemaps))
+    }
 
-        for sitemap in sitemaps {
-            let mut row = "<sitemap>".to_string();
-            row += format!(
-                "<loc>{}</loc>",
-                html_escape::encode_text(sitemap.loc.as_str())
-            )
-            .as_str();
-            if let Some(lastmod) = sitemap.lastmod {
-                row += format!("<lastmod>{}</lastmod>", lastmod).as_str();
-            }
-            row += "</sitemap>";
-            write_text(&file, row.as_str())?;
-        }
-        write_text(&file, r#"</sitemapindex>"#)?;
-        match file.flush() {
-            Ok(_) => Ok(()),
-            Err(e) => Err(SitemapError::Write(e.to_string())),
-        }
+    /// Creates a gzip-compressed sitemap index XML file at the specified path.
+    ///
+    /// The path is used as-is; pass a name ending in `.xml.gz` by convention.
+    ///
+    /// Requires the `gzip` feature.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SitemapError::FileOpen`] if the file cannot be created, or
+    /// [`SitemapError::Write`] if compressing or writing fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use sitemap_writer::{SitemapIndexWriter, SitemapIndex};
+    ///
+    /// let result = SitemapIndexWriter::make_gzip("sitemap_index.xml.gz", vec![
+    ///     SitemapIndex::new("https://example.com/sitemap1.xml.gz"),
+    /// ]);
+    /// assert!(result.is_ok());
+    /// ```
+    #[cfg(feature = "gzip")]
+    pub fn make_gzip(
+        path: impl AsRef<Path>,
+        sitemaps: impl IntoIterator<Item = SitemapIndex>,
+    ) -> Result<(), SitemapError> {
+        crate::gzip::write_gzip(path.as_ref(), &Self::build(sitemaps))
     }
 
     /// Builds a sitemap index XML string from the provided sitemaps.
@@ -199,34 +211,23 @@ impl SitemapIndexWriter {
     /// // Use with a web framework
     /// // HttpResponse::Ok().content_type("application/xml").body(xml)
     /// ```
-    pub fn build(sitemaps: Vec<SitemapIndex>) -> String {
+    pub fn build(sitemaps: impl IntoIterator<Item = SitemapIndex>) -> String {
         let mut content = String::new();
         content.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
         content.push_str(r#"<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#);
-
         for sitemap in sitemaps {
-            let mut row = "<sitemap>".to_string();
-            row += format!(
+            content.push_str("<sitemap>");
+            let _ = write!(
+                content,
                 "<loc>{}</loc>",
                 html_escape::encode_text(sitemap.loc.as_str())
-            )
-            .as_str();
-            if let Some(lastmod) = sitemap.lastmod {
-                row += format!("<lastmod>{}</lastmod>", lastmod).as_str();
+            );
+            if let Some(lastmod) = &sitemap.lastmod {
+                let _ = write!(content, "<lastmod>{}</lastmod>", lastmod);
             }
-            row += "</sitemap>";
-            content.push_str(&row);
+            content.push_str("</sitemap>");
         }
-
-        content.push_str(r#"</sitemapindex>"#);
+        content.push_str("</sitemapindex>");
         content
     }
-}
-
-fn write_text(mut file: &File, str: &str) -> Result<(), SitemapError> {
-    let f = file.write(str.as_bytes());
-    if f.is_err() {
-        return Err(SitemapError::Write(f.err().unwrap().to_string()));
-    }
-    Ok(())
 }

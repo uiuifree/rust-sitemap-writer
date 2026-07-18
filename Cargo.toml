@@ -1,12 +1,13 @@
 [package]
 name = "sitemap-writer"
-version = "1.0.1"
+version = "2.0.0"
 edition = "2024"
+rust-version = "1.85"
 authors = ["uiuifree"]
-description = "A simple and lightweight Rust library for generating XML sitemaps"
+description = "A simple and lightweight Rust library for generating XML sitemaps: sitemap index, 50,000-URL splitting, gzip output, and Google image/video/news/hreflang extensions"
 license = "MIT"
-keywords = ["sitemap", "xml", "seo", "writer", "web"]
-categories = ["web-programming", "encoding", "parser-implementations"]
+keywords = ["sitemap", "xml", "seo", "generator", "google"]
+categories = ["web-programming", "encoding"]
 
 readme = "README.md"
 repository = "https://github.com/uiuifree/rust-sitemap-writer"
@@ -14,4 +15,15 @@ documentation = "https://docs.rs/sitemap-writer"
 homepage = "https://github.com/uiuifree/rust-sitemap-writer"
 
 [dependencies]
-html-escape="0.2.13"
+html-escape = "0.2.13"
+flate2 = { version = "1", optional = true }
+
+[features]
+gzip = ["dep:flate2"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[example]]
+name = "gzip"
+required-features = ["gzip"]
